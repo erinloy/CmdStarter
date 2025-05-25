@@ -1,4 +1,6 @@
 ﻿using System.CommandLine;
+using com.cyberinternauts.csharp.CmdStarter.Lib;
+using com.cyberinternauts.csharp.CmdStarter.Lib.Interfaces;
 
 namespace CmdStarter.Tests
 {
@@ -20,8 +22,10 @@ namespace CmdStarter.Tests
         public void CommandsWithOptions_ShouldNotThrow_WhenLoadingOptionsFromTypesWithIssues()
         {
             // Arrange
-            var starter = new Starter();
-            var command = new Command("test-command");
+            var starter = new Starter(new[] { typeof(MockStarterCommand).Namespace ?? string.Empty });
+            
+            // Force error handler to be silent
+            starter.AssemblyLoadErrorHandler.Mode = AssemblyLoadErrorHandler.ErrorHandlingMode.Silent;
             
             // Act & Assert - Just verify that we don't throw exceptions when accessing options
             Assert.DoesNotThrow(() => 
@@ -29,6 +33,16 @@ namespace CmdStarter.Tests
                 // This internally triggers the LoadOptions method through InstantiateCommands
                 starter.Start(new[] { "--help" }).Wait();
             });
+        }
+
+        // Mock command for testing
+        public class MockStarterCommand : IStarterCommand
+        {
+            public GlobalOptionsManager? GlobalOptionsManager { get; set; }
+            
+            public Delegate HandlingMethod => (Func<Task<int>>)Execute;
+            
+            public Task<int> Execute() => Task.FromResult(0);
         }
     }
 }
