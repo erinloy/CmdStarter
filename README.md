@@ -21,6 +21,7 @@ in beta too.
 - Autowiring executing method parameters to System.CommandLine command arguments
 - Alias, Hidden, Description and AutoComplete attributes are offered to set command options/arguments properties
 - Automatic commands tree loading via namespaces or Parent|Children attributes
+- Resilient to assembly load errors, allowing for graceful degradation when malformed assemblies are encountered
 
 ## Usage
 
@@ -51,6 +52,34 @@ Those methods allow classes with a constructor having parameters.
 - `(new Starter()).Start(IServiceManager, string[])` can be used having an object implementing `IServiceManager`
 
 Any of your preferred library can be used. This repository includes an example with Simple Injector.
+
+### Assembly Load Error Handling
+
+CmdStarter is designed to be resilient when loading assemblies that might be malformed or have issues. The `AssemblyLoadErrorHandler` class provides control over how these errors are handled:
+
+```csharp
+// Access the error handler through the Starter instance
+var starter = new CmdStarter.Lib.Starter();
+
+// Configure the error handling mode
+starter.AssemblyLoadErrorHandler.Mode = AssemblyLoadErrorHandler.ErrorHandlingMode.RaiseEvent;
+
+// Subscribe to error events if needed
+starter.AssemblyLoadErrorHandler.AssemblyLoadError += (sender, args) => 
+{
+    Console.WriteLine($"Assembly load error: {args.Exception.Message}");
+};
+
+starter.AssemblyLoadErrorHandler.TypeLoadError += (sender, args) => 
+{
+    Console.WriteLine($"Type load error in assembly {args.Assembly.FullName}: {args.Exception.Message}");
+};
+```
+
+Available error handling modes:
+- `Silent` (default): Silently ignore errors and continue
+- `RaiseEvent`: Raise events but don't throw exceptions
+- `Throw`: Throw exceptions immediately
 
 ## Participation | Submit issues, ideas
 

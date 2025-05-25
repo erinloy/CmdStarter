@@ -2,7 +2,7 @@
 	<Import Project="..\ProjectsCommon.props" />
 	
   <PropertyGroup>
-    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <GeneratePackageOnBuild>False</GeneratePackageOnBuild>
     <PackageId>$(BasePackageName).$(SolutionName)</PackageId>
     <Title>$(SolutionName)</Title>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
@@ -25,6 +25,12 @@
     <PackageIcon>Icon.png</PackageIcon>
     <PackageOutputPath>..\artefacts</PackageOutputPath>
   </PropertyGroup>
+  
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+      <_Parameter1>CmdStarter.Tests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
 	
   <ItemGroup>
     <None Include="..\Icon.png">

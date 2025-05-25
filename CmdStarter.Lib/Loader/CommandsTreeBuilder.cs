@@ -61,14 +61,27 @@ namespace com.cyberinternauts.csharp.CmdStarter.Lib.Loader
 
         private ParentAttribute? GetParentAttribute(Type command)
         {
-            var parentAttributes = command.GetCustomAttributes(false).Where(IsParent);
-            if (parentAttributes.Count() > 1)
+            try
             {
-                var message = nameof(ParentAttribute) + " or its derived classes are present more than once on " + command.FullName;
-                throw new InvalidAttributeException(message);
-            }
+                var parentAttributes = command.GetCustomAttributes(false).Where(IsParent);
+                if (parentAttributes.Count() > 1)
+                {
+                    var message = nameof(ParentAttribute) + " or its derived classes are present more than once on " + command.FullName;
+                    throw new InvalidAttributeException(message);
+                }
 
-            return parentAttributes.FirstOrDefault() as ParentAttribute;
+                return parentAttributes.FirstOrDefault() as ParentAttribute;
+            }
+            catch (InvalidAttributeException)
+            {
+                // Re-throw InvalidAttributeException for duplicate parent attributes
+                throw;
+            }
+            catch (Exception)
+            {
+                // Swallow other exceptions (like assembly load errors)
+                return null;
+            }
         }
 
 

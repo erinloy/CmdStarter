@@ -9,8 +9,7 @@ namespace com.cyberinternauts.csharp.CmdStarter.Lib
     /// </summary>
     public sealed class GlobalOptionsManager
     {
-
-        private static IEnumerable<Type>? foundTypes;
+        private IEnumerable<Type>? foundTypes;
         private readonly Dictionary<Type, object> globalOptions = new();
         private readonly Starter starter;
 
@@ -74,12 +73,13 @@ namespace com.cyberinternauts.csharp.CmdStarter.Lib
             }
         }
 
-        private static void FindTypes()
+        private void FindTypes()
         {
             if (foundTypes != null) return;
 
-            var types = AppDomain.CurrentDomain.GetAssemblies()
-                .SelectMany(a => a.GetTypes())
+            var assemblies = starter.AssemblyLoadErrorHandler.GetAssemblies();
+            var types = assemblies
+                .SelectMany(a => starter.AssemblyLoadErrorHandler.GetTypesFromAssembly(a))
                 .Where(t => t.IsClass && t.IsAssignableTo(typeof(IGlobalOptionsContainer)));
 
             foundTypes = new List<Type>(types);

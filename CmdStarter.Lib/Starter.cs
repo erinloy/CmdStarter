@@ -53,6 +53,7 @@ namespace com.cyberinternauts.csharp.CmdStarter.Lib
         private bool hasToUseDefaults = true;
         private ClassesBuildingMode classesBuildingMode = ClassesBuildingMode.Both;
         private bool isRootingLonelyCommand = true;
+        private readonly AssemblyLoadErrorHandler assemblyLoadErrorHandler = new();
 
         /// <summary>
         /// Constructor without filters
@@ -175,6 +176,11 @@ namespace com.cyberinternauts.csharp.CmdStarter.Lib
         public RootCommand RootCommand { get => rootCommand; }
 
         /// <summary>
+        /// Access to the assembly load error handler
+        /// </summary>
+        public AssemblyLoadErrorHandler AssemblyLoadErrorHandler { get => assemblyLoadErrorHandler; }
+
+        /// <summary>
         /// Change the factory used by <see cref="IStarterCommand.GetInstance{CommandType}"/> default implementation
         /// </summary>
         /// <param name="factory"></param>
@@ -252,17 +258,19 @@ namespace com.cyberinternauts.csharp.CmdStarter.Lib
             hasToFindCommands = false;
 
             var specialCommandsNamespace = typeof(GenericStarterCommand<>).Namespace;
-            var commandsTypes = AppDomain.CurrentDomain.GetAssemblies()
-                        .SelectMany(a => a.GetTypes()
-                            .Where(t => 
-                                t.IsClass && 
-                                !t.IsAbstract && 
-                                t.IsAssignableTo(typeof(IStarterCommand)) &&
-                                t.Namespace != null &&
-                                t.Namespace != specialCommandsNamespace && 
-                                !t.Namespace.StartsWith(specialCommandsNamespace + ".")
-                            )
-                        );
+            var assemblies = assemblyLoadErrorHandler.GetAssemblies();
+            
+            var commandsTypes = assemblies
+                .SelectMany(a => assemblyLoadErrorHandler.GetTypesFromAssembly(a)
+                    .Where(t => 
+                        t.IsClass && 
+                        !t.IsAbstract && 
+                        t.IsAssignableTo(typeof(IStarterCommand)) &&
+                        t.Namespace != null &&
+                        t.Namespace != specialCommandsNamespace && 
+                        !t.Namespace.StartsWith(specialCommandsNamespace + ".")
+                    )
+                );
 
             // Filter by namespaces
             commandsTypes = FilterTypesByNamespaces(commandsTypes, Namespaces.ToList());
