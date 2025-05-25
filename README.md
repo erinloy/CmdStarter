@@ -1,7 +1,7 @@
 # CmdStarter
 
-![Build](https://github.com/erinloy/CmdStarter/actions/workflows/build.yml/badge.svg)
-![Build and Test](https://github.com/erinloy/CmdStarter/actions/workflows/tests.yml/badge.svg)
+[![Build](https://github.com/erinloy/CmdStarter/actions/workflows/build.yml/badge.svg)](https://github.com/erinloy/CmdStarter/actions/workflows/build.yml)
+[![Build and Test](https://github.com/erinloy/CmdStarter/actions/workflows/tests.yml/badge.svg)](https://github.com/erinloy/CmdStarter/actions/workflows/tests.yml)
 
 This library is a layer over [System.CommandLine](https://github.com/dotnet/command-line-api) to ease integration 
 into existing projects. Currently, this dependency is still in beta version, hence this library's version will stay 
