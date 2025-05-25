@@ -1,6 +1,7 @@
 # CmdStarter
 
 [![Build and Test](https://github.com/erinloy/CmdStarter/actions/workflows/build.yml/badge.svg)](https://github.com/erinloy/CmdStarter/actions/workflows/build.yml)
+[![Create Release](https://github.com/erinloy/CmdStarter/actions/workflows/release.yml/badge.svg)](https://github.com/erinloy/CmdStarter/actions/workflows/release.yml)
 
 This library is a layer over [System.CommandLine](https://github.com/dotnet/command-line-api) to ease integration 
 into existing projects. Currently, this dependency is still in beta version, hence this library's version will stay 
@@ -82,6 +83,13 @@ Available error handling modes:
 - `Silent` (default): Silently ignore errors and continue
 - `RaiseEvent`: Raise events but don't throw exceptions
 - `Throw`: Throw exceptions immediately
+
+## Releases
+
+Binary releases are automatically created for each new commit to the main branch.
+These releases contain the compiled library and dependencies, packaged in a zip file.
+You can find the latest release in the [Releases section](https://github.com/erinloy/CmdStarter/releases)
+of the repository.
 
 ## Participation | Submit issues, ideas
 

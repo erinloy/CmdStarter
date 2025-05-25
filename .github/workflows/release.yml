@@ -1,0 +1,85 @@
+name: Create Release
+
+on:
+  push:
+    branches: [ "master", "main" ]
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 7.0.410
+    
+    - name: Restore dependencies
+      run: dotnet restore
+    
+    - name: Build in Release mode
+      run: dotnet build --configuration Release --no-restore
+    
+    - name: Get commit SHA
+      id: get-commit-sha
+      run: echo "SHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+    
+    - name: Create release zip file
+      run: |
+        mkdir -p release
+        # Copy both the library and demo executable with all dependencies
+        cp -r CmdStarter.Demo/bin/Release/net7.0/* release/
+        cd release
+        zip -r ../CmdStarter-${{ steps.get-commit-sha.outputs.SHA }}.zip .
+        cd ..
+    
+    - name: Check for existing release
+      id: check-release
+      run: |
+        LATEST_RELEASE=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          "https://api.github.com/repos/${{ github.repository }}/releases/latest" 2>/dev/null || echo '{"tag_name":"none"}')
+        
+        LATEST_TAG=$(echo $LATEST_RELEASE | jq -r '.tag_name')
+        CURRENT_SHA=$(git rev-parse HEAD)
+        
+        if [ "$LATEST_TAG" != "none" ]; then
+          TAG_COMMIT=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/git/refs/tags/$LATEST_TAG" | jq -r '.object.sha')
+          
+          if [ "$TAG_COMMIT" = "$CURRENT_SHA" ]; then
+            echo "RELEASE_EXISTS=true" >> $GITHUB_OUTPUT
+          else
+            echo "RELEASE_EXISTS=false" >> $GITHUB_OUTPUT
+          fi
+        else
+          echo "RELEASE_EXISTS=false" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Create GitHub Release
+      if: steps.check-release.outputs.RELEASE_EXISTS != 'true'
+      id: create-release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: release-${{ steps.get-commit-sha.outputs.SHA }}
+        release_name: Release ${{ steps.get-commit-sha.outputs.SHA }}
+        draft: false
+        prerelease: false
+        body: |
+          Automated release from commit ${{ steps.get-commit-sha.outputs.SHA }}
+          
+          This release contains the binary output from the CmdStarter library.
+    
+    - name: Upload Release Asset
+      if: steps.check-release.outputs.RELEASE_EXISTS != 'true'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create-release.outputs.upload_url }}
+        asset_path: ./CmdStarter-${{ steps.get-commit-sha.outputs.SHA }}.zip
+        asset_name: CmdStarter-${{ steps.get-commit-sha.outputs.SHA }}.zip
+        asset_content_type: application/zip
