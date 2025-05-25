@@ -91,6 +91,19 @@ These releases contain the compiled library and dependencies, packaged in a zip 
 You can find the latest release in the [Releases section](https://github.com/erinloy/CmdStarter/releases)
 of the repository.
 
+## Versioning
+
+This project uses [Nerdbank.GitVersioning](https://github.com/dotnet/Nerdbank.GitVersioning) to manage version numbers.
+The version is automatically derived from git history and configured in the `version.json` file in the root of the repository.
+
+Key benefits of this approach:
+- Every build produces a unique, deterministic version number
+- Version numbers are compatible with SemVer 2.0
+- Version is visible in assemblies, NuGet packages, and GitHub releases
+- Version is based on the git commit history and tags
+
+For more information on how versioning works, see the [Nerdbank.GitVersioning documentation](https://github.com/dotnet/Nerdbank.GitVersioning/blob/master/doc/index.md).
+
 ## Participation | Submit issues, ideas
 
 The project uses a free open source licence of Jira to manage its development.

@@ -10,11 +10,24 @@ jobs:
     
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0 # Needed for GitVersioning
     
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 7.0.410
+    
+    - name: Install nbgv tool
+      run: dotnet tool install --global nbgv
+    
+    - name: Get version info
+      id: nbgv
+      run: |
+        echo "VERSION=$(nbgv get-version -v Version)" >> $GITHUB_OUTPUT
+        echo "NUGET_VERSION=$(nbgv get-version -v NuGetPackageVersion)" >> $GITHUB_OUTPUT
+        echo "SEMVER2=$(nbgv get-version -v SemVer2)" >> $GITHUB_OUTPUT
+        echo "SHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
     
     - name: Restore dependencies
       run: dotnet restore
@@ -22,17 +35,13 @@ jobs:
     - name: Build in Release mode
       run: dotnet build --configuration Release --no-restore
     
-    - name: Get commit SHA
-      id: get-commit-sha
-      run: echo "SHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-    
     - name: Create release zip file
       run: |
         mkdir -p release
         # Copy both the library and demo executable with all dependencies
         cp -r CmdStarter.Demo/bin/Release/net7.0/* release/
         cd release
-        zip -r ../CmdStarter-${{ steps.get-commit-sha.outputs.SHA }}.zip .
+        zip -r ../CmdStarter-${{ steps.nbgv.outputs.SEMVER2 }}.zip .
         cd ..
     
     - name: Check for existing release
@@ -64,14 +73,17 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: release-${{ steps.get-commit-sha.outputs.SHA }}
-        release_name: Release ${{ steps.get-commit-sha.outputs.SHA }}
+        tag_name: v${{ steps.nbgv.outputs.NUGET_VERSION }}
+        release_name: Release v${{ steps.nbgv.outputs.NUGET_VERSION }}
         draft: false
-        prerelease: false
+        prerelease: ${{ contains(steps.nbgv.outputs.NUGET_VERSION, '-') }}
         body: |
-          Automated release from commit ${{ steps.get-commit-sha.outputs.SHA }}
+          Release v${{ steps.nbgv.outputs.NUGET_VERSION }}
           
           This release contains the binary output from the CmdStarter library.
+          
+          Version: ${{ steps.nbgv.outputs.SEMVER2 }}
+          Commit: ${{ steps.nbgv.outputs.SHA }}
     
     - name: Upload Release Asset
       if: steps.check-release.outputs.RELEASE_EXISTS != 'true'
@@ -80,6 +92,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create-release.outputs.upload_url }}
-        asset_path: ./CmdStarter-${{ steps.get-commit-sha.outputs.SHA }}.zip
-        asset_name: CmdStarter-${{ steps.get-commit-sha.outputs.SHA }}.zip
+        asset_path: ./CmdStarter-${{ steps.nbgv.outputs.SEMVER2 }}.zip
+        asset_name: CmdStarter-${{ steps.nbgv.outputs.SEMVER2 }}.zip
         asset_content_type: application/zip
