@@ -11,6 +11,9 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
+    - name: Setup GitHub CLI
+      uses: cli/cli-action@v1
+    
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
@@ -20,13 +23,23 @@ jobs:
       run: dotnet restore
     
     - name: Build in Release mode
-      run: dotnet build --configuration Release --no-restore
+      id: build
+      run: |
+        dotnet build --configuration Release --no-restore
+        if [ $? -eq 0 ]; then
+          echo "build_success=true" >> $GITHUB_OUTPUT
+        else
+          echo "build_success=false" >> $GITHUB_OUTPUT
+          exit 1
+        fi
     
     - name: Get commit SHA
       id: get-commit-sha
+      if: steps.build.outputs.build_success == 'true'
       run: echo "SHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
     
     - name: Create release zip file
+      if: steps.build.outputs.build_success == 'true'
       run: |
         mkdir -p release
         # Copy both the library and demo executable with all dependencies
@@ -37,49 +50,26 @@ jobs:
     
     - name: Check for existing release
       id: check-release
+      if: steps.build.outputs.build_success == 'true'
       run: |
-        LATEST_RELEASE=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-          "https://api.github.com/repos/${{ github.repository }}/releases/latest" 2>/dev/null || echo '{"tag_name":"none"}')
-        
-        LATEST_TAG=$(echo $LATEST_RELEASE | jq -r '.tag_name')
         CURRENT_SHA=$(git rev-parse HEAD)
         
-        if [ "$LATEST_TAG" != "none" ]; then
-          TAG_COMMIT=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/${{ github.repository }}/git/refs/tags/$LATEST_TAG" | jq -r '.object.sha')
-          
-          if [ "$TAG_COMMIT" = "$CURRENT_SHA" ]; then
-            echo "RELEASE_EXISTS=true" >> $GITHUB_OUTPUT
-          else
-            echo "RELEASE_EXISTS=false" >> $GITHUB_OUTPUT
-          fi
+        # Check if a release with this SHA already exists
+        if gh release view "release-$(git rev-parse --short HEAD)" &>/dev/null; then
+          echo "RELEASE_EXISTS=true" >> $GITHUB_OUTPUT
         else
           echo "RELEASE_EXISTS=false" >> $GITHUB_OUTPUT
         fi
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     
     - name: Create GitHub Release
-      if: steps.check-release.outputs.RELEASE_EXISTS != 'true'
-      id: create-release
-      uses: actions/create-release@v1
+      if: steps.check-release.outputs.RELEASE_EXISTS != 'true' && steps.build.outputs.build_success == 'true'
+      run: |
+        gh release create \
+          "release-${{ steps.get-commit-sha.outputs.SHA }}" \
+          "./CmdStarter-${{ steps.get-commit-sha.outputs.SHA }}.zip" \
+          --title "Release ${{ steps.get-commit-sha.outputs.SHA }}" \
+          --notes "Automated release from commit ${{ steps.get-commit-sha.outputs.SHA }}\n\nThis release contains the binary output from the CmdStarter library."
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: release-${{ steps.get-commit-sha.outputs.SHA }}
-        release_name: Release ${{ steps.get-commit-sha.outputs.SHA }}
-        draft: false
-        prerelease: false
-        body: |
-          Automated release from commit ${{ steps.get-commit-sha.outputs.SHA }}
-          
-          This release contains the binary output from the CmdStarter library.
-    
-    - name: Upload Release Asset
-      if: steps.check-release.outputs.RELEASE_EXISTS != 'true'
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create-release.outputs.upload_url }}
-        asset_path: ./CmdStarter-${{ steps.get-commit-sha.outputs.SHA }}.zip
-        asset_name: CmdStarter-${{ steps.get-commit-sha.outputs.SHA }}.zip
-        asset_content_type: application/zip
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
