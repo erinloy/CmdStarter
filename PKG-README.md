@@ -1,6 +1,6 @@
 # CmdStarter
 
-### v0.9.0-beta4.22272.1
+### v0.9.0-beta.4
 
 Features:
 - Implement commands using an abstract class or an interface
