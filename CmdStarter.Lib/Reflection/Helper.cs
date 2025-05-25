@@ -23,26 +23,35 @@ namespace com.cyberinternauts.csharp.CmdStarter.Lib.Reflection
         {
             const string methodName = nameof(IStarterCommand.GetInstance);
 
-            // Look through classes hierarchy from top to bottom
-            MethodInfo? methodInfo = null;
-            var currentType = commandType;
-            while (
-                methodInfo == null 
-                && currentType != null 
-                && currentType.IsAssignableTo(typeof(IStarterCommand))
-                && !currentType.Equals(typeof(StarterCommand)) // Ensures not looping back
-                )
+            try
             {
-                methodInfo = currentType.GetMethod(methodName);
-                currentType = currentType.BaseType;
+                // Look through classes hierarchy from top to bottom
+                MethodInfo? methodInfo = null;
+                var currentType = commandType;
+                while (
+                    methodInfo == null 
+                    && currentType != null 
+                    && currentType.IsAssignableTo(typeof(IStarterCommand))
+                    && !currentType.Equals(typeof(StarterCommand)) // Ensures not looping back
+                    )
+                {
+                    methodInfo = currentType.GetMethod(methodName);
+                    currentType = currentType.BaseType;
+                }
+                // Use default interface method implementation
+                if (methodInfo == null)
+                {
+                    methodInfo = typeof(IStarterCommand).GetMethod(methodName)!;
+                }
+                var method = methodInfo.MakeGenericMethod(commandType);
+                return method;
             }
-            // Use default interface method implementation
-            if (methodInfo == null)
+            catch (Exception)
             {
-                methodInfo = typeof(IStarterCommand).GetMethod(methodName)!;
+                // Return default interface implementation if an error occurs
+                var methodInfo = typeof(IStarterCommand).GetMethod(methodName)!;
+                return methodInfo.MakeGenericMethod(commandType);
             }
-            var method = methodInfo.MakeGenericMethod(commandType);
-            return method;
         }
 
         /// <inheritdoc cref="GetProperties(Type)"/>
@@ -60,37 +69,45 @@ namespace com.cyberinternauts.csharp.CmdStarter.Lib.Reflection
         {
             LoadInterfaceProperties();
 
-            var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Where(p =>
-                    p.CanWrite && p.CanRead
-                    &&
-                    (
-                      (p.DeclaringType?.IsAssignableTo(typeof(IStarterCommand)) ?? false)
-                      && !interfacePropertiesNames!.Contains(p.Name) // Can't be null because already loaded
-                    ||
-                    (p.DeclaringType?.IsAssignableTo(typeof(IGlobalOptionsContainer)) ?? false))
-                    &&
-                    !Attribute.IsDefined(p.DeclaringType, typeof(AllOptionsExcludedAttribute))
-                );
-
-            bool hasAnyOptionAttribute = properties.Any(property =>
-                property.GetCustomAttribute<OptionAttribute>() is not null);
-
-            if (!hasAnyOptionAttribute)
+            try 
             {
-                properties = properties.Where(property =>
-                    !Attribute.IsDefined(property, typeof(NotOptionAttribute)));
-            }
-            else
-            {
-                properties = properties.Where(property =>
+                var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                    .Where(p =>
+                        p.CanWrite && p.CanRead
+                        &&
+                        (
+                          (p.DeclaringType?.IsAssignableTo(typeof(IStarterCommand)) ?? false)
+                          && !interfacePropertiesNames!.Contains(p.Name) // Can't be null because already loaded
+                        ||
+                        (p.DeclaringType?.IsAssignableTo(typeof(IGlobalOptionsContainer)) ?? false))
+                        &&
+                        !Attribute.IsDefined(p.DeclaringType, typeof(AllOptionsExcludedAttribute))
+                    );
+
+                bool hasAnyOptionAttribute = properties.Any(property =>
+                    property.GetCustomAttribute<OptionAttribute>() is not null);
+
+                if (!hasAnyOptionAttribute)
                 {
-                    return Attribute.IsDefined(property, typeof(OptionAttribute))
-                        && !Attribute.IsDefined(property, typeof(NotOptionAttribute));
-                });
-            }
+                    properties = properties.Where(property =>
+                        !Attribute.IsDefined(property, typeof(NotOptionAttribute)));
+                }
+                else
+                {
+                    properties = properties.Where(property =>
+                    {
+                        return Attribute.IsDefined(property, typeof(OptionAttribute))
+                            && !Attribute.IsDefined(property, typeof(NotOptionAttribute));
+                    });
+                }
 
-            return properties;
+                return properties;
+            }
+            catch (Exception)
+            {
+                // If there's an error retrieving properties, return an empty collection
+                return Enumerable.Empty<PropertyInfo>();
+            }
         }
 
         /// <summary>

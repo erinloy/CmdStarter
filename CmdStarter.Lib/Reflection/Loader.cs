@@ -69,38 +69,60 @@ namespace com.cyberinternauts.csharp.CmdStarter.Lib.Reflection
 
         internal static void LoadDescription(ICustomAttributeProvider provider, Symbol receptacle)
         {
-            var descriptions = provider.GetCustomAttributes(false)
-                .Where(a => a is DescriptionAttribute)
-                .Select(a => ((DescriptionAttribute)a).Description);
-            var description = descriptions?.Aggregate(
-                    new StringBuilder(),
-                    (current, next) => current.Append(current.Length == 0 ? "" : StarterCommand.DESCRIPTION_JOINER).Append(next)
-                ).ToString() ?? string.Empty;
+            try
+            {
+                var descriptions = provider.GetCustomAttributes(false)
+                    .Where(a => a is DescriptionAttribute)
+                    .Select(a => ((DescriptionAttribute)a).Description);
+                var description = descriptions?.Aggregate(
+                        new StringBuilder(),
+                        (current, next) => current.Append(current.Length == 0 ? "" : StarterCommand.DESCRIPTION_JOINER).Append(next)
+                    ).ToString() ?? string.Empty;
 
-            receptacle.Description = description;
+                receptacle.Description = description;
+            }
+            catch (Exception)
+            {
+                // If there's an error loading descriptions, set an empty description
+                receptacle.Description = string.Empty;
+            }
         }
 
         internal static void LoadAliases(ICustomAttributeProvider provider, IdentifierSymbol receptacle)
         {
-            var aliases = provider.GetCustomAttributes(false)
-                .Where(a => a is AliasAttribute)
-                .Cast<AliasAttribute>()
-                .SelectMany(a => a.Aliases);
-
-            foreach (var alias in aliases)
+            try
             {
-                receptacle.AddAlias(alias);
+                var aliases = provider.GetCustomAttributes(false)
+                    .Where(a => a is AliasAttribute)
+                    .Cast<AliasAttribute>()
+                    .SelectMany(a => a.Aliases);
+
+                foreach (var alias in aliases)
+                {
+                    receptacle.AddAlias(alias);
+                }
+            }
+            catch (Exception)
+            {
+                // If there's an error loading aliases, continue without adding any
             }
         }
 
         internal static void LoadAutoCompletes(ICustomAttributeProvider provider, Action<CompletionDelegate> action)
         {
-            var completionDelegates = GetAutoCompleteAttributes(provider)
-                .Select(attribute => attribute.Context);
-
-            foreach (var completion in completionDelegates)
+            try
             {
-                action(completion);
+                var completionDelegates = GetAutoCompleteAttributes(provider)
+                    .Select(attribute => attribute.Context);
+
+                foreach (var completion in completionDelegates)
+                {
+                    action(completion);
+                }
+            }
+            catch (Exception)
+            {
+                // If there's an error loading auto-completes, continue without adding any
             }
         }
 
