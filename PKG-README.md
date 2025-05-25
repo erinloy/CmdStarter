@@ -13,3 +13,4 @@ Features:
 - Autowiring executing method parameters to System.CommandLine command arguments
 - Alias, Hidden, Description and AutoComplete attributes are offered to set command options/arguments properties
 - Automatic commands tree loading via namespaces or Parent|Children attributes
+- Resilient to assembly load errors, with configurable error handling modes

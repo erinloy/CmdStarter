@@ -76,7 +76,7 @@ namespace com.cyberinternauts.csharp.CmdStarter.Lib
             catch (ReflectionTypeLoadException ex)
             {
                 HandleTypeLoadError(assembly, ex);
-                return ex.Types?.Where(t => t != null) ?? Enumerable.Empty<Type>();
+                return ex.Types?.Where(t => t != null).Cast<Type>() ?? Enumerable.Empty<Type>();
             }
             catch (Exception ex)
             {
@@ -137,6 +137,11 @@ namespace com.cyberinternauts.csharp.CmdStarter.Lib
         /// </summary>
         public Exception Exception { get; }
         
+        /// <summary>
+        /// Creates a new instance of the AssemblyLoadErrorEventArgs class
+        /// </summary>
+        /// <param name="assembly">The assembly that failed to load, if available</param>
+        /// <param name="exception">The exception that occurred</param>
         public AssemblyLoadErrorEventArgs(Assembly? assembly, Exception exception)
         {
             Assembly = assembly;
@@ -159,6 +164,11 @@ namespace com.cyberinternauts.csharp.CmdStarter.Lib
         /// </summary>
         public Exception Exception { get; }
         
+        /// <summary>
+        /// Creates a new instance of the TypeLoadErrorEventArgs class
+        /// </summary>
+        /// <param name="assembly">The assembly from which types were being loaded</param>
+        /// <param name="exception">The exception that occurred</param>
         public TypeLoadErrorEventArgs(Assembly assembly, Exception exception)
         {
             Assembly = assembly;
