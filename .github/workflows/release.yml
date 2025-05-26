@@ -2,38 +2,37 @@ name: Create Release
 
 on:
   push:
-    branches: [ "master", "main" ]
+    branches: [ "master" ]
 
 jobs:
   create-release:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
       with:
-        fetch-depth: 0 # Needed for GitVersioning
+        submodules: 'recursive'
+        fetch-depth: 0 # Required for full git history
     
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 7.0.410
     
-    - name: Install nbgv tool
-      run: dotnet tool install --global nbgv
-    
-    - name: Get version info
-      id: nbgv
-      run: |
-        echo "VERSION=$(nbgv get-version -v Version)" >> $GITHUB_OUTPUT
-        echo "NUGET_VERSION=$(nbgv get-version -v NuGetPackageVersion)" >> $GITHUB_OUTPUT
-        echo "SEMVER2=$(nbgv get-version -v SemVer2)" >> $GITHUB_OUTPUT
-        echo "SHA=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-    
     - name: Restore dependencies
       run: dotnet restore
     
+    - name: Setup Nerdbank.GitVersioning
+      uses: dotnet/nbgv@master
+      with:
+        setAllVars: true
+    
+    - name: Show version info
+      run: echo "NBGV_SemVer2 $NBGV_SemVer2"
+    
     - name: Build in Release mode
-      run: dotnet build --configuration Release --no-restore
+      run: dotnet build --no-restore /p:PublicRelease=true --configuration Release
     
     - name: Create release zip file
       run: |
@@ -41,57 +40,33 @@ jobs:
         # Copy both the library and demo executable with all dependencies
         cp -r CmdStarter.Demo/bin/Release/net7.0/* release/
         cd release
-        zip -r ../CmdStarter-${{ steps.nbgv.outputs.SEMVER2 }}.zip .
+        zip -r ../CmdStarter-${{ env.NBGV_SemVer2 }}.zip .
         cd ..
     
-    - name: Check for existing release
-      id: check-release
-      run: |
-        LATEST_RELEASE=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-          "https://api.github.com/repos/${{ github.repository }}/releases/latest" 2>/dev/null || echo '{"tag_name":"none"}')
-        
-        LATEST_TAG=$(echo $LATEST_RELEASE | jq -r '.tag_name')
-        CURRENT_SHA=$(git rev-parse HEAD)
-        
-        if [ "$LATEST_TAG" != "none" ]; then
-          TAG_COMMIT=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/${{ github.repository }}/git/refs/tags/$LATEST_TAG" | jq -r '.object.sha')
-          
-          if [ "$TAG_COMMIT" = "$CURRENT_SHA" ]; then
-            echo "RELEASE_EXISTS=true" >> $GITHUB_OUTPUT
-          else
-            echo "RELEASE_EXISTS=false" >> $GITHUB_OUTPUT
-          fi
-        else
-          echo "RELEASE_EXISTS=false" >> $GITHUB_OUTPUT
-        fi
-    
     - name: Create GitHub Release
-      if: steps.check-release.outputs.RELEASE_EXISTS != 'true'
       id: create-release
       uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: v${{ steps.nbgv.outputs.NUGET_VERSION }}
-        release_name: Release v${{ steps.nbgv.outputs.NUGET_VERSION }}
+        tag_name: v${{ env.NBGV_NuGetPackageVersion }}
+        release_name: Release v${{ env.NBGV_NuGetPackageVersion }}
         draft: false
-        prerelease: ${{ contains(steps.nbgv.outputs.NUGET_VERSION, '-') }}
+        prerelease: ${{ contains(env.NBGV_NuGetPackageVersion, '-') }}
         body: |
-          Release v${{ steps.nbgv.outputs.NUGET_VERSION }}
+          Release v${{ env.NBGV_NuGetPackageVersion }}
           
           This release contains the binary output from the CmdStarter library.
           
-          Version: ${{ steps.nbgv.outputs.SEMVER2 }}
-          Commit: ${{ steps.nbgv.outputs.SHA }}
+          Version: ${{ env.NBGV_SemVer2 }}
+          Commit: ${{ github.sha }}
     
     - name: Upload Release Asset
-      if: steps.check-release.outputs.RELEASE_EXISTS != 'true'
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create-release.outputs.upload_url }}
-        asset_path: ./CmdStarter-${{ steps.nbgv.outputs.SEMVER2 }}.zip
-        asset_name: CmdStarter-${{ steps.nbgv.outputs.SEMVER2 }}.zip
+        asset_path: ./CmdStarter-${{ env.NBGV_SemVer2 }}.zip
+        asset_name: CmdStarter-${{ env.NBGV_SemVer2 }}.zip
         asset_content_type: application/zip
