@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <GitVersionBaseDirectory>$(MSBuildThisFileDirectory)</GitVersionBaseDirectory>
+    <DisableGitVersioning>true</DisableGitVersioning>
+  </PropertyGroup>
+</Project>
