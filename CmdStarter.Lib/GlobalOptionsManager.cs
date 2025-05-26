@@ -16,7 +16,8 @@ namespace com.cyberinternauts.csharp.CmdStarter.Lib
         internal GlobalOptionsManager(Starter starter) 
         {
             this.starter = starter;
-            FindTypes();
+            // FindTypes() is now called on-demand rather than in constructor
+            // to allow setting AssemblyLoadErrorHandler preferences first
         }
 
         /// <summary>
@@ -57,9 +58,11 @@ namespace com.cyberinternauts.csharp.CmdStarter.Lib
 
         internal void FilterTypes()
         {
+            FindTypes(); // Ensure types are loaded on-demand
+            
             GlobalOptionsTypes.Clear();
 
-            var filteredTypes = FilterTypesByNamespaces(foundTypes!, starter.Namespaces.ToList()); // foundTypes can't be null as initialized in constructor
+            var filteredTypes = FilterTypesByNamespaces(foundTypes!, starter.Namespaces.ToList()); // foundTypes can't be null as initialized by FindTypes()
             filteredTypes = FilterTypesByClasses(filteredTypes, starter.Classes.ToList());
 
             GlobalOptionsTypes.AddRange(filteredTypes);
